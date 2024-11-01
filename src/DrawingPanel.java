@@ -14,7 +14,7 @@ public class DrawingPanel extends JPanel {
         setBackground(Color.WHITE);
         setPreferredSize(new Dimension(600, 400));
         canvas = new BufferedImage(600, 400, BufferedImage.TYPE_INT_ARGB);
-
+        
         addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 prevX = e.getX();
@@ -44,7 +44,7 @@ public class DrawingPanel extends JPanel {
             }
         });
     }
-
+    
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
