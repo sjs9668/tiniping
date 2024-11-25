@@ -1,3 +1,4 @@
+package Project;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -11,42 +12,35 @@ public class DB {
             if (conn != null) {
                 System.out.println("데이터베이스에 연결되었습니다!");
                 Statement stmt = conn.createStatement();
-                // SQL 작업 수행 (테이블 생성, 데이터 삽입 등)
-                
-                // 제목을 저장하는 테이블 생성
-                String createTitlesTable = "CREATE TABLE IF NOT EXISTS Titles (" +
-                                            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                                            "title TEXT);";
-                stmt.execute(createTitlesTable);
 
-                // 내용을 저장하는 테이블 생성
-                String createContentsTable = "CREATE TABLE IF NOT EXISTS Contents (" +
-                                              "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                                              "content TEXT);";
-                stmt.execute(createContentsTable);
+                // 공통 테이블 생성
+                String createEntriesTable = "CREATE TABLE IF NOT EXISTS Entries (" +
+                                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                                            "date TEXT NOT NULL);"; // 날짜 정보 저장
+                stmt.execute(createEntriesTable);
 
-                // 그림을 저장하는 테이블 생성
-                String createDrawingsTable = "CREATE TABLE IF NOT EXISTS Drawings (" +
-                                              "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                                              "drawing_path TEXT);";
-                stmt.execute(createDrawingsTable);
+                // 텍스트 일기 테이블 생성 (사진 추가 가능)
+                String createTextEntriesTable = "CREATE TABLE IF NOT EXISTS TextEntries (" +
+                                                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                                                "entry_id INTEGER NOT NULL, " + // 공통 테이블 참조
+                                                "title TEXT, " +
+                                                "content TEXT, " +
+                                                "photo_path TEXT, " + // 사진 경로 추가
+                                                "FOREIGN KEY(entry_id) REFERENCES Entries(id) ON DELETE CASCADE);";
+                stmt.execute(createTextEntriesTable);
 
-                // 사진을 저장하는 테이블 생성
-                String createPhotosTable = "CREATE TABLE IF NOT EXISTS Photos (" +
-                                            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                                            "photo_path TEXT);";
-                stmt.execute(createPhotosTable);
-
-                // 날짜를 저장하는 테이블 생성
-                String createDatesTable = "CREATE TABLE IF NOT EXISTS Dates (" +
-                                           "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                                           "date TEXT NOT NULL);";
-                stmt.execute(createDatesTable);
+                // 그림 일기 테이블 생성 (사진 필드 없음)
+                String createDrawingEntriesTable = "CREATE TABLE IF NOT EXISTS DrawingEntries (" +
+                                                   "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                                                   "entry_id INTEGER NOT NULL, " + // 공통 테이블 참조
+                                                   "title TEXT, " +
+                                                   "drawing_path TEXT, " + // 그림 경로
+                                                   "FOREIGN KEY(entry_id) REFERENCES Entries(id) ON DELETE CASCADE);";
+                stmt.execute(createDrawingEntriesTable);
 
                 System.out.println("테이블이 성공적으로 생성되었습니다.");
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }

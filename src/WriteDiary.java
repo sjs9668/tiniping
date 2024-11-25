@@ -1,3 +1,4 @@
+package Project;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -14,5 +15,10 @@ public class WriteDiary extends JPanel {
         // 레이아웃 설정 및 컴포넌트 추가
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         add(scrollPane);
+    }
+    
+ // 텍스트 영역 반환 메서드
+    public JTextArea getTextArea() {
+        return textArea;
     }
 }

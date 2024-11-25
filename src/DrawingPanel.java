@@ -1,3 +1,5 @@
+package Project;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -13,9 +15,11 @@ public class DrawingPanel extends JPanel {
     public DrawingPanel() {
         setBackground(Color.WHITE);
         setPreferredSize(new Dimension(600, 400));
-        canvas = new BufferedImage(600, 400, BufferedImage.TYPE_INT_ARGB);
-        
+        canvas = new BufferedImage(600, 400, BufferedImage.TYPE_INT_ARGB); // 초기화
+        clearCanvas(); // 캔버스 초기화
+
         addMouseListener(new MouseAdapter() {
+            @Override
             public void mousePressed(MouseEvent e) {
                 prevX = e.getX();
                 prevY = e.getY();
@@ -23,16 +27,17 @@ public class DrawingPanel extends JPanel {
         });
 
         addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
             public void mouseDragged(MouseEvent e) {
                 int x = e.getX();
                 int y = e.getY();
 
                 Graphics2D g2d = canvas.createGraphics();
                 if (isEraserMode) {
-                    g2d.setColor(getBackground()); // 지우개 모드에서는 배경색으로 그림
+                    g2d.setColor(getBackground()); // 지우개는 배경색으로 그림
                     g2d.fillOval(x - eraserSize / 2, y - eraserSize / 2, eraserSize, eraserSize);
                 } else {
-                    g2d.setColor(currentColor); // 일반 모드에서는 선택된 색상으로 그림
+                    g2d.setColor(currentColor); // 선택된 색상으로 그림
                     g2d.setStroke(new BasicStroke(2)); // 선 두께 설정
                     g2d.drawLine(prevX, prevY, x, y);
                 }
@@ -44,20 +49,53 @@ public class DrawingPanel extends JPanel {
             }
         });
     }
-    
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.drawImage(canvas, 0, 0, null); // 버퍼 이미지를 패널에 그림
+        g.drawImage(canvas, 0, 0, null); // 캔버스를 패널에 그림
 
         if (isEraserMode) {
-            // 현재 마우스 위치에 라임색 원을 그려 지우개 범위를 표시
+            // 지우개 범위 표시
             Point mousePosition = getMousePosition();
             if (mousePosition != null) {
                 g.setColor(Color.GREEN); // 라임색
                 g.drawOval(mousePosition.x - eraserSize / 2, mousePosition.y - eraserSize / 2, eraserSize, eraserSize);
             }
         }
+    }
+
+    // 캔버스를 초기화 (흰색 배경)
+    public void clearCanvas() {
+        Graphics2D g2d = canvas.createGraphics();
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        g2d.dispose();
+        repaint();
+    }
+
+    // 그림이 비어 있는지 확인하는 메서드
+    public boolean isDrawingEmpty() {
+        if (canvas == null) {
+            return true; // 캔버스가 초기화되지 않았으면 비어있음
+        }
+
+        // 이미지의 모든 픽셀이 초기 상태인지 확인 (흰색)
+        for (int x = 0; x < canvas.getWidth(); x++) {
+            for (int y = 0; y < canvas.getHeight(); y++) {
+                int pixel = canvas.getRGB(x, y) & 0xFFFFFF; // 투명도 제외
+                if (pixel != Color.WHITE.getRGB()) {
+                    return false; // 흰색이 아닌 픽셀 발견
+                }
+            }
+        }
+        return true; // 모든 픽셀이 흰색
+    }
+
+
+    // BufferedImage 반환
+    public BufferedImage getBufferedImage() {
+        return canvas;
     }
 
     // 색상 설정 메서드
@@ -118,4 +156,14 @@ public class DrawingPanel extends JPanel {
 
         return colorPanel;
     }
+    
+    // BufferedImage를 설정하는 메서드
+    public void setBufferedImage(BufferedImage drawing) {
+        if (drawing != null) {
+            this.canvas = drawing;
+            repaint(); // 변경된 그림을 다시 그리기
+        }
+    }
+    
+    
 }
