@@ -213,14 +213,19 @@ public class MainFrame extends JFrame {
         buttonPanel.add(saveButton);
         buttonPanel.add(cancelButton);
 
-        attachButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            int result = fileChooser.showOpenDialog(dialog);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                imageInsertPanel.displayImage(selectedFile);
-            }
-        });
+     // 그림일기일 경우 사진 삽입 버튼 제거
+        if (isDrawing) {
+            buttonPanel.remove(attachButton);  // 그림일기일 경우, 사진 삽입 버튼 제거
+        } else {
+            attachButton.addActionListener(e -> {
+                JFileChooser fileChooser = new JFileChooser();
+                int result = fileChooser.showOpenDialog(dialog);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    imageInsertPanel.displayImage(selectedFile);
+                }
+            });
+        }
 
         saveButton.addActionListener(e -> {
             try {
