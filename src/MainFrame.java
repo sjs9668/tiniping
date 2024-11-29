@@ -1,4 +1,3 @@
-package Project;
 
 import java.text.SimpleDateFormat;
 import javax.swing.*;
@@ -33,8 +32,8 @@ public class MainFrame extends JFrame {
         // 컴포넌트 초기화
         initializeComponents();
 
-        // 일기 강조 표시
-        highlightDiaryDates();
+        // 리스트 및 강조 표시
+        refreshDiaryView();
 
         setVisible(true);
     }
@@ -102,6 +101,11 @@ public class MainFrame extends JFrame {
             diaryEntries.put(date, ""); // 일기 날짜 저장
         }
 
+        // 선택된 날짜 가져오기
+        java.util.Date selectedDate = calendar.getDate();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String dateStr = sdf.format(selectedDate);
+        
         // 달력의 날짜 버튼 가져오기
         JPanel dayPanel = calendar.getDayChooser().getDayPanel();
         Component[] dayButtons = dayPanel.getComponents();
@@ -123,6 +127,15 @@ public class MainFrame extends JFrame {
                     } else {
                         button.setBackground(null); // 강조 제거
                         button.setOpaque(false);
+                    }
+                    
+                    // 선택된 날짜 테두리 색
+                    if (formattedDate.equals(dateStr)) {
+                    	button.setBorder(BorderFactory.createLineBorder(Color.RED, 3)); // 테두리 색과 두께 설정
+                        button.setOpaque(true);
+                    }
+                    else {
+                        button.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1)); // 테두리 초기화
                     }
                 }
             }
@@ -213,7 +226,7 @@ public class MainFrame extends JFrame {
         buttonPanel.add(saveButton);
         buttonPanel.add(cancelButton);
 
-     // 그림일기일 경우 사진 삽입 버튼 제거
+        // 그림일기일 경우 사진 삽입 버튼 제거
         if (isDrawing) {
             buttonPanel.remove(attachButton);  // 그림일기일 경우, 사진 삽입 버튼 제거
         } else {
@@ -257,6 +270,7 @@ public class MainFrame extends JFrame {
                     dbContents.saveContent(entryId, title, content, photoPath);
 
                     JOptionPane.showMessageDialog(dialog, "텍스트 일기가 성공적으로 저장되었습니다.");
+                    dialog.dispose();
                 } else {
                     // 그림 일기 저장
                     DrawingPanel drawingPanel = (DrawingPanel) mainPanel.getComponent(0);
@@ -275,14 +289,13 @@ public class MainFrame extends JFrame {
                     dbDrawings.saveDrawing(entryId, drawing, title);
 
                     JOptionPane.showMessageDialog(dialog, "그림 일기가 성공적으로 저장되었습니다.");
+                    dialog.dispose();
                 }
 
                 refreshDiaryView();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(dialog, "DB 저장 중 오류 발생: " + ex.getMessage());
                 ex.printStackTrace();
-            } finally {
-                dialog.dispose();
             }
         });
 
@@ -387,21 +400,39 @@ public class MainFrame extends JFrame {
 
     // 하단 패널: 저장 및 취소 버튼
     JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    JButton attachButton = new JButton("사진 삽입");
     JButton saveButton = new JButton("저장");
     JButton cancelButton = new JButton("취소");
 
+    // 사진 수정
+    final String[] selectedPhotoPath = {photoPath}; // 선택된 사진 경로 저장
+    attachButton.addActionListener(e -> {
+        JFileChooser fileChooser = new JFileChooser();
+        int result = fileChooser.showOpenDialog(dialog);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            selectedPhotoPath[0] = selectedFile.getAbsolutePath(); // 경로 업데이트
+
+            // 선택된 사진 표시
+            ImageIcon icon = new ImageIcon(selectedPhotoPath[0]);
+            Image scaledImage = icon.getImage().getScaledInstance(200, 150, Image.SCALE_SMOOTH);
+            imageLabel.setIcon(new ImageIcon(scaledImage));
+        }
+    });
+    
     saveButton.addActionListener(e -> {
         try {
             String newTitle = titleField.getText();
             String newContent = contentArea.getText();
-
+            String newPhotoPath = selectedPhotoPath[0];
+            
             if (newTitle.isEmpty() || newContent.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog, "제목과 내용을 모두 입력해주세요.");
                 return;
             }
-
-            dbContents.updateContent(title, dateStr, newTitle, newContent, photoPath);
-
+            
+            dbContents.updateContent(title, dateStr, newTitle, newContent, newPhotoPath);
+            
             JOptionPane.showMessageDialog(dialog, "텍스트 일기가 성공적으로 수정되었습니다.");
             refreshDiaryView();
             dialog.dispose();
@@ -412,7 +443,7 @@ public class MainFrame extends JFrame {
     });
 
     cancelButton.addActionListener(e -> dialog.dispose());
-
+    bottomPanel.add(attachButton);
     bottomPanel.add(saveButton);
     bottomPanel.add(cancelButton);
 
