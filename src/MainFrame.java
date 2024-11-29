@@ -202,34 +202,48 @@ public class MainFrame extends JFrame {
         topPanel.add(dateLabel, BorderLayout.NORTH);
         topPanel.add(titlePanel, BorderLayout.SOUTH);
 
-        // 본문 패널: 텍스트 일기 또는 그림 일기
+        // 본문 패널
         JPanel mainPanel = new JPanel(new BorderLayout());
         ImageInsertPanel imageInsertPanel = new ImageInsertPanel();
+
         if (isDrawing) {
+            // 그림 일기 작성
             DrawingPanel drawingPanel = new DrawingPanel();
-            JPanel colorSelectionPanel = drawingPanel.createColorSelectionPanel();
+
+            // 색상 선택 및 지우개 버튼
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            JButton colorButton = new JButton("색상 선택");
+            JButton eraserButton = new JButton("지우개");
+
+            colorButton.addActionListener(e -> {
+                Color selectedColor = JColorChooser.showDialog(dialog, "색상 선택", drawingPanel.getCurrentColor());
+                if (selectedColor != null) {
+                    drawingPanel.setCurrentColor(selectedColor);
+                }
+            });
+
+            eraserButton.addActionListener(e -> drawingPanel.activateEraser());
+
+            buttonPanel.add(colorButton);
+            buttonPanel.add(eraserButton);
+
             mainPanel.add(drawingPanel, BorderLayout.CENTER);
-            mainPanel.add(colorSelectionPanel, BorderLayout.SOUTH);
+            mainPanel.add(buttonPanel, BorderLayout.SOUTH);
         } else {
+            // 텍스트 일기 작성
             WriteDiary writeDiaryPanel = new WriteDiary();
             mainPanel.add(writeDiaryPanel, BorderLayout.CENTER);
             mainPanel.add(imageInsertPanel, BorderLayout.SOUTH);
         }
 
-        // 하단 패널: 사진 삽입, 저장 및 취소 버튼 정렬
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // 하단 패널: 저장 및 취소 버튼
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton attachButton = new JButton("사진 삽입");
         JButton saveButton = new JButton("저장");
         JButton cancelButton = new JButton("취소");
 
-        buttonPanel.add(attachButton);
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-
-        // 그림일기일 경우 사진 삽입 버튼 제거
-        if (isDrawing) {
-            buttonPanel.remove(attachButton);  // 그림일기일 경우, 사진 삽입 버튼 제거
-        } else {
+        if (!isDrawing) {
+            // 사진 삽입 버튼 동작
             attachButton.addActionListener(e -> {
                 JFileChooser fileChooser = new JFileChooser();
                 int result = fileChooser.showOpenDialog(dialog);
@@ -238,14 +252,18 @@ public class MainFrame extends JFrame {
                     imageInsertPanel.displayImage(selectedFile);
                 }
             });
+            bottomPanel.add(attachButton);
         }
+
+        bottomPanel.add(saveButton);
+        bottomPanel.add(cancelButton);
 
         saveButton.addActionListener(e -> {
             try {
                 String title = titleField.getText();
                 if (title.isEmpty()) {
                     JOptionPane.showMessageDialog(dialog, "제목을 입력해주세요.");
-                    return; // 저장 중단
+                    return;
                 }
 
                 DB_Dates dbDates = new DB_Dates();
@@ -255,12 +273,25 @@ public class MainFrame extends JFrame {
                     return;
                 }
 
-                if (!isDrawing) {
+                if (isDrawing) {
+                    // 그림 일기 저장
+                    DrawingPanel drawingPanel = (DrawingPanel) mainPanel.getComponent(0);
+                    if (drawingPanel.isDrawingEmpty()) {
+                        JOptionPane.showMessageDialog(dialog, "그림을 추가해주세요.");
+                        return;
+                    }
+
+                    BufferedImage drawing = drawingPanel.getBufferedImage();
+                    DB_Drawings dbDrawings = new DB_Drawings();
+                    dbDrawings.saveDrawing(entryId, drawing, title);
+
+                    JOptionPane.showMessageDialog(dialog, "그림 일기가 성공적으로 저장되었습니다.");
+                } else {
                     // 텍스트 일기 저장
                     String content = ((WriteDiary) mainPanel.getComponent(0)).getTextArea().getText();
                     if (content.isEmpty()) {
                         JOptionPane.showMessageDialog(dialog, "내용을 입력해주세요.");
-                        return; // 저장 중단
+                        return;
                     }
 
                     File selectedImage = imageInsertPanel.getSelectedFile();
@@ -270,28 +301,9 @@ public class MainFrame extends JFrame {
                     dbContents.saveContent(entryId, title, content, photoPath);
 
                     JOptionPane.showMessageDialog(dialog, "텍스트 일기가 성공적으로 저장되었습니다.");
-                    dialog.dispose();
-                } else {
-                    // 그림 일기 저장
-                    DrawingPanel drawingPanel = (DrawingPanel) mainPanel.getComponent(0);
-                    if (drawingPanel == null) {
-                        JOptionPane.showMessageDialog(dialog, "그림 일기 패널을 찾을 수 없습니다.");
-                        return; // 저장 중단
-                    }
-
-                    if (drawingPanel.isDrawingEmpty()) {
-                        JOptionPane.showMessageDialog(dialog, "그림을 추가해주세요.");
-                        return; // 저장 중단
-                    }
-
-                    BufferedImage drawing = drawingPanel.getBufferedImage();
-                    DB_Drawings dbDrawings = new DB_Drawings();
-                    dbDrawings.saveDrawing(entryId, drawing, title);
-
-                    JOptionPane.showMessageDialog(dialog, "그림 일기가 성공적으로 저장되었습니다.");
-                    dialog.dispose();
                 }
 
+                dialog.dispose();
                 refreshDiaryView();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(dialog, "DB 저장 중 오류 발생: " + ex.getMessage());
@@ -299,19 +311,17 @@ public class MainFrame extends JFrame {
             }
         });
 
-
-
-        cancelButton.addActionListener(e -> {
-            dialog.dispose();
-            refreshDiaryView();
-        });
+        cancelButton.addActionListener(e -> dialog.dispose());
 
         dialog.add(topPanel, BorderLayout.NORTH);
         dialog.add(mainPanel, BorderLayout.CENTER);
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.add(bottomPanel, BorderLayout.SOUTH);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
+
+
+
 
     private void showEditDialog() {
     int selectedIndex = diaryList.getSelectedIndex();
@@ -455,70 +465,93 @@ public class MainFrame extends JFrame {
 }
 
     private void showDrawingDiaryEditDialog(String title, BufferedImage drawing, DB_Drawings dbDrawings, String dateStr) {
-    // 다이얼로그 생성
-    JDialog dialog = new JDialog(this, "그림 일기 수정", true);
-    dialog.setSize(800, 700);
-    dialog.setLayout(new BorderLayout());
+        // 다이얼로그 생성
+        JDialog dialog = new JDialog(this, "그림 일기 수정", true);
+        dialog.setSize(800, 700);
+        dialog.setLayout(new BorderLayout());
 
-    // 상단 패널: 제목 필드
-    JPanel topPanel = new JPanel(new BorderLayout());
-    JLabel titleLabel = new JLabel("제목: ");
-    JTextField titleField = new JTextField(title, 20); // 기존 제목 로드
-    topPanel.add(titleLabel, BorderLayout.WEST);
-    topPanel.add(titleField, BorderLayout.CENTER);
+        // 상단 패널: 제목 필드
+        JPanel topPanel = new JPanel(new BorderLayout());
+        JLabel titleLabel = new JLabel("제목: ");
+        JTextField titleField = new JTextField(title, 20); // 기존 제목 로드
+        topPanel.add(titleLabel, BorderLayout.WEST);
+        topPanel.add(titleField, BorderLayout.CENTER);
 
-    // 중앙 패널: DrawingPanel(그림 편집 캔버스)
-    DrawingPanel drawingPanel = new DrawingPanel();
-    drawingPanel.setPreferredSize(new Dimension(600, 400));
-    if (drawing != null) {
-        drawingPanel.setBufferedImage(drawing); // 기존 그림 로드
-    }
-
-    // 색상 선택 패널 (DrawingPanel과 연결)
-    JPanel centerPanel = new JPanel(new BorderLayout());
-    centerPanel.add(drawingPanel, BorderLayout.CENTER); // 캔버스
-    centerPanel.add(drawingPanel.createColorSelectionPanel(), BorderLayout.SOUTH); // 색상 선택 패널
-
-    // 하단 패널: 저장 및 취소 버튼
-    JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-    JButton saveButton = new JButton("저장");
-    JButton cancelButton = new JButton("취소");
-
-    saveButton.addActionListener(e -> {
-        try {
-            String newTitle = titleField.getText();
-            if (newTitle.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "제목을 입력해주세요.");
-                return;
-            }
-
-            // 수정된 그림 가져오기
-            BufferedImage updatedDrawing = drawingPanel.getBufferedImage();
-
-            // DB 업데이트
-            dbDrawings.updateDrawing(title, dateStr, newTitle, updatedDrawing);
-
-            JOptionPane.showMessageDialog(dialog, "그림 일기가 성공적으로 수정되었습니다.");
-            refreshDiaryView(); // UI 갱신
-            dialog.dispose();
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(dialog, "그림 일기 수정 중 오류 발생: " + ex.getMessage());
-            ex.printStackTrace();
+        // 중앙 패널: DrawingPanel(그림 편집 캔버스)
+        DrawingPanel drawingPanel = new DrawingPanel();
+        drawingPanel.setPreferredSize(new Dimension(600, 400));
+        if (drawing != null) {
+            drawingPanel.setBufferedImage(drawing); // 기존 그림 로드
         }
-    });
 
-    cancelButton.addActionListener(e -> dialog.dispose());
+        // 버튼 패널: 색상 선택 및 지우개 버튼
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton colorButton = new JButton("색상 선택");
+        JButton eraserButton = new JButton("지우개");
 
-    bottomPanel.add(saveButton);
-    bottomPanel.add(cancelButton);
+        // 색상 선택 버튼 동작 정의
+        colorButton.addActionListener(e -> {
+            Color selectedColor = JColorChooser.showDialog(dialog, "색상 선택", drawingPanel.getCurrentColor());
+            if (selectedColor != null) {
+                drawingPanel.setCurrentColor(selectedColor); // 선택한 색상을 적용
+            }
+        });
 
-    // 다이얼로그에 컴포넌트 추가
-    dialog.add(topPanel, BorderLayout.NORTH); // 제목 필드
-    dialog.add(centerPanel, BorderLayout.CENTER); // 그림 캔버스 및 색상 선택 패널
-    dialog.add(bottomPanel, BorderLayout.SOUTH); // 버튼
-    dialog.setLocationRelativeTo(this);
-    dialog.setVisible(true);
-}
+        // 지우개 버튼 동작 정의
+        eraserButton.addActionListener(e -> drawingPanel.activateEraser());
+
+        // 버튼 패널에 버튼 추가
+        buttonPanel.add(colorButton);
+        buttonPanel.add(eraserButton);
+
+        // 중앙 패널에 DrawingPanel과 버튼 패널 추가
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.add(drawingPanel, BorderLayout.CENTER);
+        centerPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        // 하단 패널: 저장 및 취소 버튼
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton saveButton = new JButton("저장");
+        JButton cancelButton = new JButton("취소");
+
+        // 저장 버튼 동작 정의
+        saveButton.addActionListener(e -> {
+            try {
+                String newTitle = titleField.getText();
+                if (newTitle.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialog, "제목을 입력해주세요.");
+                    return;
+                }
+
+                // 수정된 그림 가져오기
+                BufferedImage updatedDrawing = drawingPanel.getBufferedImage();
+
+                // DB 업데이트
+                dbDrawings.updateDrawing(title, dateStr, newTitle, updatedDrawing);
+
+                JOptionPane.showMessageDialog(dialog, "그림 일기가 성공적으로 수정되었습니다.");
+                refreshDiaryView(); // UI 갱신
+                dialog.dispose();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dialog, "그림 일기 수정 중 오류 발생: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+
+        // 취소 버튼 동작 정의
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        // 하단 패널에 버튼 추가
+        bottomPanel.add(saveButton);
+        bottomPanel.add(cancelButton);
+
+        // 다이얼로그에 컴포넌트 추가
+        dialog.add(topPanel, BorderLayout.NORTH); // 제목 필드
+        dialog.add(centerPanel, BorderLayout.CENTER); // 그림 캔버스 및 버튼 패널
+        dialog.add(bottomPanel, BorderLayout.SOUTH); // 저장 및 취소 버튼
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
 
     private void showDeleteDialog() {
 	int selectedIndex = diaryList.getSelectedIndex();
